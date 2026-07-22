@@ -3,6 +3,7 @@ import { config } from "dotenv"; //loads .env
 import cors from "cors"; //allow frontend request
 import cookieParser from "cookie-parser"; //read cookie
 import fileUpload from "express-fileupload"; //handles uploaded files
+import { createTables } from "./utils/createTables.js";
 
 //load env variables
 config({ path: "./config/config.env" });
@@ -34,5 +35,7 @@ app.use(
     abortOnLimit: true,
   }),
 );
+
+createTables();
 
 export default app;
