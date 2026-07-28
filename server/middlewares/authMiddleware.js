@@ -6,19 +6,15 @@ import pool from "../database/db.js"
 export const isAuthenticated = catchAsyncErrors(async(req, res, next) => {
     //get token from cookies
     const {token} = req.cookies;
-
     if(!token){
         return next(new ErrorHandler("Please login first", 401));
     }
-
     //verify jwt
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
     //get user id
     const user = await pool.query("SELECT * FROM users WHERE id = $1 LIMIT 1",
         [decoded.id]
     );
-
     req.user = user.rows[0];
     next();
 })
