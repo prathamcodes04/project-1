@@ -4,6 +4,8 @@ import cors from "cors"; //allow frontend request
 import cookieParser from "cookie-parser"; //read cookie
 import fileUpload from "express-fileupload"; //handles uploaded files
 import { createTables } from "./utils/createTables.js";
+import { errorMiddleware } from "./middlewares/errorMiddlewares.js";
+import authRouter from "./router/authRoutes.js"
 
 //load env variables
 config({ path: "./config/config.env" });
@@ -36,6 +38,10 @@ app.use(
   }),
 );
 
+app.use("/api/v1/auth", authRouter);
+
 createTables();
+
+app.use(errorMiddleware);
 
 export default app;
