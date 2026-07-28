@@ -1,5 +1,5 @@
 //generate html for password reset email
-export const generateEmailTemplate = (user, resetToken) => {
+export const generateEmailTemplate = (resetPasswordUrl) => {
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px;
     margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius:
@@ -19,8 +19,7 @@ export const generateEmailTemplate = (user, resetToken) => {
         </a>
         </div>
         <p style="font-size: 16px; color: #ccc;">If you did not
-        request this, please ignore this email. The link will expire in 10
-        minutes.</p>
+        request this, please ignore this email. The link will expire in 15 minutes.</p>
         <p style="font-size: 16px; color: #ccc;">If the button above
         doesn’t work, copy and paste the following URL into your browser:</p>
         <p style="font-size: 16px; color: #fff; word-wrap:
