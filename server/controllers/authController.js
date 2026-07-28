@@ -268,3 +268,5 @@ export const updatePassword = catchAsyncErrors(async(req, res, next) => {
         message: "Password updated successfully"
     });
 })
+
+//
