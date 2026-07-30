@@ -7,6 +7,21 @@ import { generateEmailTemplate } from "../utils/generateForgotPasswordEmailTempl
 import { generateResetPasswordToken } from "../utils/generateResetPasswordToken.js";
 import { sendMail } from "../utils/sendEmail.js";
 import crypto from "crypto";
+import {v2 as cloudinary} from "cloudinary";
+
+console.log({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET ? "Loaded" : "Missing",
+});
+
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+
 
 //register user
 export const register = catchAsyncErrors(async (req, res, next) => {
@@ -269,4 +284,70 @@ export const updatePassword = catchAsyncErrors(async(req, res, next) => {
     });
 })
 
-//
+//update profile
+export const updateProfile = catchAsyncErrors(async (req, res, next) => {
+    const { name, email } = req.body;
+
+    if (!name || !email) {
+        return next(new ErrorHandler("Please provide name and email.", 400));
+    }
+
+    if(name.trim().length === 0 || email.trim().length === 0){
+        return next(new ErrorHandler("Nmae and email connot be empty", 400));
+    }
+
+    let avatarData = {};
+    if (req.files && req.files.avatar) {
+      const { avatar } = req.files;
+
+      if (req.user?.avatar?.public_id) {
+        await cloudinary.uploader.destroy(req.user.avatar.public_id);
+      }
+
+      let newProfileImage;
+      try {
+        newProfileImage = await cloudinary.uploader.upload(
+          avatar.tempFilePath,
+          {
+            folder: "Project1_avatars",
+            width: 150,
+            crop: "scale",
+          }
+        );
+
+        console.log("Upload Success:", newProfileImage);
+      } catch (err) {
+        console.log("Cloudinary Error:", err);
+        return next(new ErrorHandler("Image upload failed", 502));
+      }
+
+      avatarData = {
+        public_id: newProfileImage.public_id, //from cloudinary
+        url: newProfileImage.secure_url, //from cloudinary
+      };
+    }
+
+    let user;
+    if (Object.keys(avatarData).length === 0) {
+    user = await pool.query(
+        "UPDATE users SET name = $1, email = $2 WHERE id = $3 RETURNING *",
+        [name, email, req.user.id]
+    );
+} else {
+  user = await pool.query(
+    `UPDATE users
+     SET name = $1,
+       email = $2,
+       avatar = $3
+     WHERE id = $4
+     RETURNING *`,
+    [name, email, avatarData, req.user.id]
+  );
+}
+
+    res.status(200).json({
+        success: true,
+        message: "Profile updated successfully",
+        user: user.rows[0],
+    });
+});
