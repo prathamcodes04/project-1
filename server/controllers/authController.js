@@ -18,7 +18,7 @@ import cloudinary from "../config/cloudinary.js";
 //register user
 export const register = catchAsyncErrors(async (req, res, next) => {
   //getting input from user
-  const { name, email, password } = req.body;
+  const { password } = req.body;
   const name = req.body.name?.trim();
   const email = req.body.email?.trim().toLowerCase();
 

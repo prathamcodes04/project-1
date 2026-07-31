@@ -6,6 +6,7 @@ import fileUpload from "express-fileupload"; //handles uploaded files
 import { createTables } from "./utils/createTables.js";
 import { errorMiddleware } from "./middlewares/errorMiddlewares.js";
 import authRouter from "./router/authRoutes.js"
+import productRouter from "./router/productRoutes.js"
 
 //load env variables
 config({ path: "./config/config.env" });
@@ -39,6 +40,7 @@ app.use(
 );
 
 app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/product", productRouter);
 
 createTables();
 
