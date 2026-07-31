@@ -7,26 +7,20 @@ import { generateEmailTemplate } from "../utils/generateForgotPasswordEmailTempl
 import { generateResetPasswordToken } from "../utils/generateResetPasswordToken.js";
 import { sendMail } from "../utils/sendEmail.js";
 import crypto from "crypto";
-import {v2 as cloudinary} from "cloudinary";
+import cloudinary from "../config/cloudinary.js";
 
-console.log({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET ? "Loaded" : "Missing",
-});
-
-cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-});
-
-
+// console.log({
+//   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+//   api_key: process.env.CLOUDINARY_API_KEY,
+//   api_secret: process.env.CLOUDINARY_API_SECRET ? "Loaded" : "Missing",
+// });
 
 //register user
 export const register = catchAsyncErrors(async (req, res, next) => {
   //getting input from user
   const { name, email, password } = req.body;
+  const name = req.body.name?.trim();
+  const email = req.body.email?.trim().toLowerCase();
 
   //check if all fields are provided
   if (!name || !email || !password) {
