@@ -20,7 +20,7 @@ router.get("/:id", fetchSingleProduct);
 
 // Admin product management
 router.post("/admin/create", isAuthenticated, authorizedRoles("Admin"), createProduct);
-router.put("/:id", isAuthenticated, authorizedRoles("Admin"), updateProduct);
+router.put("/admin/update/:productId", isAuthenticated, authorizedRoles("Admin"), updateProduct);
 router.delete("/:id", isAuthenticated, authorizedRoles("Admin"), deleteProduct);
 
 // Product reviews

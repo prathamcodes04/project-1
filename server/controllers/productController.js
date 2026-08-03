@@ -171,7 +171,39 @@ export const fetchAllProducts = catchAsyncErrors(async (req, res, next) => {
 });
 
 //update product
-export const updateProduct = catchAsyncErrors(async (req, res, next) => {});
+export const updateProduct = catchAsyncErrors(async (req, res, next) => {
+    //get product id
+    const {productId} = req.params;
+    const {name, description, price, category, stock} = req.body;
+
+    //validate input
+    if(!name || !description || !price || !category || stock == null){
+        return next(new ErrorHandler("Please fill the required fields", 400));
+    }
+
+    //finding product in db
+    const product = await pool.query("SELECT * FROM products WHERE id = $1", [productId]);
+
+    //if product not found
+    if(product.rows.length === 0){
+        return next(new ErrorHandler("Product not found.", 404));
+    }
+
+    //updating product
+    const result = await pool.query(`
+        UPDATE products
+        SET name = $1, description = $2, price = $3, category = $4, stock = $5
+        WHERE id = $6 RETURNING *
+    `, [name, description, price, category, stock, productId]);
+
+    res.status(200).json({
+        success: true, 
+        message: "Product updated successfully.",
+        updateProduct: result.rows[0],
+    });
+});
+
+
 export const deleteProduct = catchAsyncErrors(async (req, res, next) => {});
 export const fetchSingleProduct = catchAsyncErrors(async (req, res, next) => {});
 export const postProductReview = catchAsyncErrors(async (req, res, next) => {});
