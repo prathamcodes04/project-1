@@ -203,8 +203,48 @@ export const updateProduct = catchAsyncErrors(async (req, res, next) => {
     });
 });
 
+//delete product
+export const deleteProduct = catchAsyncErrors(async (req, res, next) => {
+    const {productId} = req.params;
 
-export const deleteProduct = catchAsyncErrors(async (req, res, next) => {});
+    //finding product in db
+    const product = await pool.query("SELECT * FROM products WHERE id = $1", [productId]);
+
+    //if product not found
+    if(product.rows.length === 0){
+        return next(new ErrorHandler("Product not found", 404));
+    }
+
+    //accessing images before deleting
+    const images = product.rows[0].images;
+
+    //delete product from db
+    const result = await pool.query(`
+        DELETE FROM products
+        WHERE id = $1
+        RETURNING *
+    `, [productId]);
+
+    //if failed to delete product
+    if(result.rows.length === 0){
+        return next(new ErrorHandler("Failed to delete product", 404));
+    }
+
+    //delete images form cloduinry
+    if(images && images.length > 0){
+        for(const image of images){
+            await cloudinary.uploader.destroy(image.public_id);
+        }
+    }
+
+    res.status(200).json({
+        success: true, 
+        message: "Product deleted successfully.",
+        updateProduct: result.rows[0],
+    });
+});
+
+
 export const fetchSingleProduct = catchAsyncErrors(async (req, res, next) => {});
 export const postProductReview = catchAsyncErrors(async (req, res, next) => {});
 export const deleteReview = catchAsyncErrors(async (req, res, next) => {});

@@ -16,12 +16,12 @@ const router = express.Router();
 // Public product routes
 router.get("/", fetchAllProducts);
 router.get("/filter", fetchAllFilteredProducts);
-router.get("/:id", fetchSingleProduct);
+router.get("/:productId", fetchSingleProduct);
 
 // Admin product management
 router.post("/admin/create", isAuthenticated, authorizedRoles("Admin"), createProduct);
 router.put("/admin/update/:productId", isAuthenticated, authorizedRoles("Admin"), updateProduct);
-router.delete("/:id", isAuthenticated, authorizedRoles("Admin"), deleteProduct);
+router.delete("/admin/delete/:productId", isAuthenticated, authorizedRoles("Admin"), deleteProduct);
 
 // Product reviews
 router.put("/review", isAuthenticated, postProductReview);
