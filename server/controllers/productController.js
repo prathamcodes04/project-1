@@ -244,8 +244,39 @@ export const deleteProduct = catchAsyncErrors(async (req, res, next) => {
     });
 });
 
+//fetch single product
+export const fetchSingleProduct = catchAsyncErrors(async (req, res, next) => {
+    //product id from url
+    const {productId} = req.params;
 
-export const fetchSingleProduct = catchAsyncErrors(async (req, res, next) => {});
+    const result = await pool.query(`
+        SELECT p.*,
+        COALESCE( 
+        json_agg(
+        json_build_object(
+            'review_id', r.id,
+            'rating', r.rating,
+            'comment', r.comment,
+            'reviewer', json_build_object(
+                'id', u.id,
+                'name', u.name,
+                'avatar', u.avatar
+            ))
+        ) FILTER(WHERE r.id IS NOT NULL), '[]') AS reviews 
+          FROM products p
+          LEFT JOIN reviews r ON p.id = r.product_id
+          LEFT JOIN users u ON r.user_id = u.id
+          WHERE p.id = $1
+          GROUP BY p.id
+    `, [productId]);
+
+    res.status(200).json({
+        success: true,
+        message: "Product fetched successfully",
+        product: result.rows[0],
+    })
+});
+
 export const postProductReview = catchAsyncErrors(async (req, res, next) => {});
 export const deleteReview = catchAsyncErrors(async (req, res, next) => {});
 export const fetchAllFilteredProducts = catchAsyncErrors(async (req, res, next) => {});

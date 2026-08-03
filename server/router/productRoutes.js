@@ -16,7 +16,7 @@ const router = express.Router();
 // Public product routes
 router.get("/", fetchAllProducts);
 router.get("/filter", fetchAllFilteredProducts);
-router.get("/:productId", fetchSingleProduct);
+router.get("/singleProduct/:productId", fetchSingleProduct);
 
 // Admin product management
 router.post("/admin/create", isAuthenticated, authorizedRoles("Admin"), createProduct);
