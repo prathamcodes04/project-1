@@ -24,7 +24,7 @@ router.put("/admin/update/:productId", isAuthenticated, authorizedRoles("Admin")
 router.delete("/admin/delete/:productId", isAuthenticated, authorizedRoles("Admin"), deleteProduct);
 
 // Product reviews
-router.put("/review", isAuthenticated, postProductReview);
+router.put("/post-new/review/:productId", isAuthenticated, postProductReview);
 router.delete("/review", isAuthenticated, deleteReview);
 
 export default router;

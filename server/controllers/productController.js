@@ -277,6 +277,93 @@ export const fetchSingleProduct = catchAsyncErrors(async (req, res, next) => {
     })
 });
 
-export const postProductReview = catchAsyncErrors(async (req, res, next) => {});
+//adding review
+export const postProductReview = catchAsyncErrors(async (req, res, next) => {
+    const {productId} = req.params;
+    const {rating, comment} = req.body;
+
+    // Validate rating
+    if (!rating || rating < 1 || rating > 5) {
+        return next(new ErrorHandler("Rating must be between 1 and 5", 400));
+    }
+
+    // Validate comment
+    if (!comment || comment.trim() === "") {
+        return next(new ErrorHandler("Please provide a comment", 400));
+    }
+
+    
+    //checking if user has bought the product before reviwing
+    const purchasedCheckQuery = `
+        SELECT oi.product_id
+        FROM order_items oi
+        JOIN orders o ON o.id = oi.order_id
+        JOIN payments p ON p.order_id = o.id
+        WHERE o.buyer_id = $1
+        AND oi.product_id = $2
+        AND p.payment_status = 'Paid'
+        LIMIT 1
+    `;
+
+    const {rows} = await pool.query(purchasedCheckQuery, [
+        req.user.id, productId
+    ]);
+
+    if(rows.length === 0){
+        return res.status(403).json({
+            success: false,
+            message: "You can only review product that you have purchased",
+        });
+    }
+
+    //check product exists
+    const product = await pool.query("SELECT id FROM products WHERE id = $1", [productId]);
+
+    if(product.rows.length === 0){
+        return res.status(409).json({
+            success: false,
+            message: "Product not found",
+        });
+    }
+
+    //check if user already reviewed
+    const existingReview = await pool.query(`
+        SELECT * FROM reviews WHERE product_id = $1 AND user_id = $2    
+    `, [productId, req.user.id]);
+
+    if(existingReview.rows.length > 0){
+        return res.status(404).json({
+            success: false,
+            message: "You have already reviewed",
+        })
+    }
+
+    //insert review
+    const review = await pool.query(`
+        INSERT INTO reviews (rating, comment, product_id, user_id) 
+        VALUES ($1, $2, $3, $4)
+        RETURNING *    
+    `, [rating, comment, productId, req.user.id]);
+
+    const allReviews = await pool.query(`SELECT ROUND(AVG(rating), 2) AS avg_rating FROM reviews WHERE product_id = $1`, [productId]);
+
+    const newAvgRating = allReviews.rows[0].avg_rating;
+
+    const updatedProduct = await pool.query(`
+        UPDATE products SET ratings = $1
+        WHERE id = $2 RETURNING *    
+    `, [newAvgRating, productId]);
+
+    res.status(201).json({
+        success: true,
+        message: "Review added successfully",
+        review: review.rows[0],
+        product: updatedProduct.rows[0],
+    });
+});
+
+//deleting review
 export const deleteReview = catchAsyncErrors(async (req, res, next) => {});
+
+//fetch filtered products
 export const fetchAllFilteredProducts = catchAsyncErrors(async (req, res, next) => {});
