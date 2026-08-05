@@ -363,7 +363,33 @@ export const postProductReview = catchAsyncErrors(async (req, res, next) => {
 });
 
 //deleting review
-export const deleteReview = catchAsyncErrors(async (req, res, next) => {});
+export const deleteReview = catchAsyncErrors(async (req, res, next) => {
+    const {productId} = req.params;
+    
+    const review = await pool.query("DELET FROM reviews WHERE product_id = $1 AND user_id = $2 RETURNING *", [productId, req.user.id]);
+
+    if(review.rows.length === 0){
+        return next(new ErrorHandler("Review not found.", 404));
+    }
+
+    const allReviews = await pool.query(`SELECT ROUND(AVG(rating), 2) AS avg_rating FROM reviews WHERE product_id = $1`, [productId]);
+
+    const newAvgRating = allReviews.rows[0].avg_rating;
+
+    const updatedProduct = await pool.query(`
+        UPDATE products SET ratings = $1
+        WHERE id = $2 RETURNING *    
+    `, [newAvgRating, productId]);
+
+    res.status(200).json({
+        success: true,
+        message: "Review deleted",
+        review: review.rows[0],
+        product: updateProduct.rows[0],
+    });
+});
 
 //fetch filtered products
-export const fetchAllFilteredProducts = catchAsyncErrors(async (req, res, next) => {});
+export const fetchAllFilteredProducts = catchAsyncErrors(async (req, res, next) => {
+    
+});
