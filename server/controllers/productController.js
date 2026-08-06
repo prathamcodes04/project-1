@@ -2,6 +2,7 @@ import { catchAsyncErrors } from "../middlewares/catchAsyncError.js";
 import ErrorHandler from "../middlewares/errorMiddlewares.js";
 import cloudinary from "../config/cloudinary.js";
 import pool from "../database/db.js";
+import { getAIRecommendation } from "../utils/getAIRecommendation.js";
 
 //create product
 export const createProduct = catchAsyncErrors(async (req, res, next) => {
@@ -389,7 +390,100 @@ export const deleteReview = catchAsyncErrors(async (req, res, next) => {
     });
 });
 
-//fetch filtered products
-export const fetchAllFilteredProducts = catchAsyncErrors(async (req, res, next) => {
-    
+//fetch filtered products using ai
+export const fetchAIFilteredProducts = catchAsyncErrors(async (req, res, next) => {
+    const {userPrompt} = req.body;
+
+    if(!userPrompt){
+        return next(new ErrorHandler("Provide a valid prompt", 400));
+    }
+
+    //extarcting meaningful keywords from users's prompt
+    const filterKeywords = (query) => {
+        //stop words that dont help in searching products
+        const stopWords = new Set([
+        "a", "an", "the",
+        "i", "me", "my", "mine",
+        "we", "our", "ours",
+        "you", "your", "yours",
+        "he", "him", "his",
+        "she", "her", "hers",
+        "it", "its",
+        "they", "them", "their", "theirs",
+
+        "is", "am", "are", "was", "were",
+        "be", "been", "being",
+        "do", "does", "did",
+        "has", "have", "had",
+
+        "and", "or", "but", "if", "then",
+        "of", "to", "for", "from", "with",
+        "in", "on", "at", "by", "as",
+        "this", "that", "these", "those",
+        "there", "here",
+        "who", "whom", "whose",
+        "what", "when", "where", "why", "how",
+
+        "can", "could", "should", "would",
+        "will", "shall", "may", "might", "must",
+
+        "please", "want", "need", "looking", "find",
+        "show", "give", "get", "search"
+        ]);
+
+        return [...new Set( //removes duplicate keywords
+            query
+                .toLowerCase()
+                .replace(/[^\w\s]/g, " ") //remove punctuation
+                .split(/\s+/) //split sentence into individual words 
+                //keep only meaningful words
+                .filter(word => 
+                    word.length > 1 && 
+                    !stopWords.has(word)
+                )
+        )].map(word => `%${word}%`); //convert each word into sql wildcard format
+    };
+
+    //generate sql search keywords from prompt
+    const keywords = filterKeywords(userPrompt);
+
+    //handle prompts containing only stop words
+    if (keywords.length === 0) {
+        return next(new ErrorHandler("Prompt is too vague.", 400));
+    }
+
+    //fetch all products matching the extracted keywords
+    const result = await pool.query(`
+        SELECT *FROM products
+        WHERE name ILIKE ANY($1)
+        OR description ILIKE ANY($1)
+        OR category ILIKE ANY($1)
+        LIMIT 200
+    `, [keywords]);
+
+    const filteredProducts = result.rows;
+
+    //no matching product found
+    if(filteredProducts.length === 0){
+        return res.status(200).json({
+            success: true,
+            message: "No products found matching your prompt.",
+            products: [],
+        });
+    }
+
+    //Use AI to rank and refine the SQL-filtered products
+    const {success, products} = await getAIRecommendation(
+        req, 
+        res, 
+        userPrompt, 
+        filteredProducts
+    )
+
+    //return ai filtered products
+    res.status(200).json({
+        success: true,
+        message: "AI filtered products",
+        products,
+    });
 });

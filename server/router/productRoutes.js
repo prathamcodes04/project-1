@@ -7,7 +7,7 @@ import {
     fetchSingleProduct,
     postProductReview,
     deleteReview,
-    fetchAllFilteredProducts  
+    fetchAIFilteredProducts  
 } from "../controllers/productController.js";
 import { isAuthenticated, authorizedRoles } from "../middlewares/authMiddleware.js";
 
@@ -15,7 +15,7 @@ const router = express.Router();
 
 // Public product routes
 router.get("/", fetchAllProducts);
-router.get("/filter", fetchAllFilteredProducts);
+router.post("/ai-search", fetchAIFilteredProducts);
 router.get("/singleProduct/:productId", fetchSingleProduct);
 
 // Admin product management
