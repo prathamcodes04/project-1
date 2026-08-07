@@ -60,6 +60,7 @@ export const deleteUser = catchAsyncErrors(async(req, res, next) => {
 
 //dashboard stats
 export const dashboardStats = catchAsyncErrors(async(req, res, next) => {
+    // get today's and yesterday's date
     const today = new Date();
     const todayDate = today.toISOString().split("T")[0];
 
@@ -67,31 +68,37 @@ export const dashboardStats = catchAsyncErrors(async(req, res, next) => {
     yesterday.setDate(today.getDate() - 1);
     const yesterdayDate = yesterday.toISOString().split("T")[0];
 
+    // current month start date
     const currentMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-    const previousMonthStart = new Date(today.getFullYear(), today.getMonth() - 1);
 
+    // previoud month start and end dates
+    const previousMonthStart = new Date(today.getFullYear(), today.getMonth() - 1);
     const previousMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
 
-    //total revenue
+
+    // total revenue (all time)
     const totalRevenueAllTimeQuery = await pool.query(`
         SELECT SUM(total_price) FROM orders
     `);
-    //storing output in variable
+    // if no orders exist, default to 0
     const totalRevenueAllTime = parseFloat(totalRevenueAllTimeQuery.rows[0].sum) || 0;
 
-    //total users
+
+    // total registered users
     const totalUsersCountQuery = await pool.query(
         "SELECT COUNT(*) FROM users WHERE role = 'User'"
     );
     const totalUsersCount = parseInt(totalUsersCountQuery.rows[0].count) || 0;
 
-    //order status counts
+
+    // count order by status (Processing, Shipped, Delivered, Cancelled)
     const orderStatusCountsQuery = await pool.query(`
         SELECT order_status, COUNT(*)
         FROM orders
         GROUP BY order_status
     `);
 
+    //initialize all statuses with 0
     const orderStatusCounts = {
         Processing: 0,
         Shipped: 0,
@@ -99,24 +106,30 @@ export const dashboardStats = catchAsyncErrors(async(req, res, next) => {
         Cancelled: 0,
     };
 
+    // fill actual counts from database
     orderStatusCountsQuery.rows.forEach((row) => {
         orderStatusCounts[row.order_status] = parseInt(row.count);
     })
+
 
     //today's revenue
     const todayRevenueQuery = await pool.query(
         "SELECT SUM(total_price) FROM orders WHERE created_at::date = $1", [todayDate]
     );
+
     const todayRevenue = parseFloat(todayRevenueQuery.rows[0].sum) || 0;
+
 
     //yesterday's revenue
     const yesterdayRevenueQuery = await pool.query(
         "SELECT SUM(total_price) FROM orders WHERE created_at::date = $1", [yesterdayDate]
     );
+
     const yesterdayRevenue = parseFloat(yesterdayRevenueQuery.rows[0].sum) || 0;
 
 
-    //monthly sales for line chart
+    // monthly sales data
+    // used for line chart
     const monthlySalesQuery = await pool.query(
         `SELECT TO_CHAR(created_at, 'Mon YYYY') AS month,
         DATE_TRUNC('month', created_at) as date,
@@ -126,12 +139,14 @@ export const dashboardStats = catchAsyncErrors(async(req, res, next) => {
         ORDER BY date ASC
     `);
     
+    // convert query result into frontend-friendly format
     const monthlySales = monthlySalesQuery.rows.map(row => ({
         month: row.month,
         totalSales: parseFloat(row.totalSales) || 0,
     }));
 
-    //top 5 most sold products
+
+    //top 5 most best selling products
     const topSellingProductsQuery = await pool.query(`
         SELECT p.name, 
         p.images->0->>'url' AS image,
@@ -147,7 +162,8 @@ export const dashboardStats = catchAsyncErrors(async(req, res, next) => {
 
     const topSellingProducts = topSellingProductsQuery.rows;
 
-    //total sales of current month
+
+    //current month revenue
     const currentMonthSalesQuery = await pool.query(`
         SELECT SUM(total_price) AS total
         FROM orders
@@ -157,14 +173,17 @@ export const dashboardStats = catchAsyncErrors(async(req, res, next) => {
 
     const currentMonthSales = parseFloat(currentMonthSalesQuery.rows[0].total) || 0;
 
-    //products with stock less than or equal to 5
+
+    //low stock products (stock <= 5)
     const lowStockProductsQuery = await pool.query(`
        SELECT name, stock FROM products WHERE stock <= 5 
     `);
 
     const lowStockProducts = lowStockProductsQuery.rows;
 
-    //revenue growth rate (%)
+
+    //last month revenue
+    //used to calculate growth percentage (%)
     const lastMonthRevenueQuery = await pool.query(`
         SELECT SUM(total_price) AS total
         FROM orders
@@ -173,6 +192,9 @@ export const dashboardStats = catchAsyncErrors(async(req, res, next) => {
 
     const lastMonthRevenue = parseFloat(lastMonthRevenueQuery.rows[0].total) || 0;
 
+
+    //revenue growth rate
+    //formula: ((current - previous ) / previoud) * 100
     let revenueGrowthRate = "0%";
 
     if(lastMonthRevenue > 0){
@@ -180,13 +202,16 @@ export const dashboardStats = catchAsyncErrors(async(req, res, next) => {
         revenueGrowthRate = `${growthRate >= 0 ? "+" : ""}${growthRate.toFixed(2)}%`;
     }
 
-    // new users this month
+
+    // new users joined this month
     const newUsersThisMonthQuery = await pool.query(`
        SELECT COUNT(*) FROM users WHERE created_at >= $1 
     `, [currentMonthStart]);
 
     const newUsersThisMonth = parseInt(newUsersThisMonthQuery.rows[0].count) || 0;
 
+
+    //send dashboard statistics
     res.status(200).json({
         success: true,
         message: "Dashboard stats fetched successfully",
