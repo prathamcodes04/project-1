@@ -32,7 +32,7 @@ export const placeNewOrder = catchAsyncErrors(async (req, res, next) => {
     // ensure orderedItems is an array
     const items = Array.isArray(orderedItems)
         ? orderedItems
-        : JSON.stringify(orderedItems);
+        : [];
     
     // check whether cart contains any items
     if(!items || items.length === 0){
@@ -157,13 +157,135 @@ export const placeNewOrder = catchAsyncErrors(async (req, res, next) => {
 });
 
 // fetch single order
-export const fetchSingleOrder = catchAsyncErrors(async (req, res, next) => {})
+export const fetchSingleOrder = catchAsyncErrors(async (req, res, next) => {
+    // get order id from request parameters
+    const {orderId} = req.params;
+
+    // fetch order details along with its items and shipping information
+    const result = await pool.query(
+        `SELECT
+            o.*,
+            -- combine all order items into a JSON array
+            COALESCE(
+                json_agg(
+                    json_build_object(
+                        'order_item_id', oi.id,
+                        'order_id', oi.order_id,
+                        'product_id', oi.product_id,
+                        'quantity', oi.quantity,
+                        'price', oi.price
+                    )
+                ) FILTER (WHERE oi.id IS NOT NULL), '[]'
+            ) AS order_items,
+
+            -- create a json object containing shipping information
+            json_build_object(
+                'full_name', s.full_name,
+                'state', s.state,
+                'city', s.city,
+                'country', s.country,
+                'address', s.address,
+                'pincode', s.pincode,
+                'phone', s.phone
+            ) AS shipping_info
+        FROM orders o
+        -- join order items belonging to this order
+        LEFT JOIN order_items oi ON o.id = oi.order_id
+        --  join shipping information belonging to this order
+        LEFT JOIN shipping_info s ON o.id = s.order_id
+        -- fetch only requested order
+        WHERE o.id = $1
+        -- required because aggregate function are being used
+        GROUP BY o.id, s.id;`
+    , [orderId]);
+
+    // send fetch order to the client
+    res.status(200).json({
+        success: true,
+        message: "Order fetched",
+        order: result.rows[0],
+    });
+});
 
 // fetch my orders
-export const fetchMyOrders = catchAsyncErrors(async (req, res, next) => {})
+export const fetchMyOrders = catchAsyncErrors(async (req, res, next) => {
+    const result = await pool.query(
+        `SELECT o.*, COALESCE(
+            json_agg(
+                json_build_object(
+                    'order_item_id', oi.id,
+                    'order_id', oi.order_id,
+                    'product_id', oi.product_id,
+                    'quantity', oi.quantity,
+                    'price', oi.price,
+                    'image', oi.image,
+                    'title', oi.title
+                )
+            ) FILTER (WHERE oi.id IS NOT NULL), '[]'
+            ) AS order_items,
+                json_build_object(
+                    'full_name', s.full_name,
+                    'state', s.state,
+                    'city', s.city,
+                    'country', s.country,
+                    'address', s.address,
+                    'pincode', s.pincode,
+                    'phone', s.phone
+                ) AS shipping_info
+            FROM orders o
+            LEFT JOIN order_items oi ON o.id = oi.order_id
+            LEFT JOIN shipping_info s ON o.id = s.order_id
+        WHERE o.buyer_id = $1
+        GROUP BY o.id, s.id
+        `
+    , [req.user.id]);
+
+    res.status(200).json({
+        success: true,
+        message: "Orders fetched",
+        orders: result.rows,
+    })
+})
 
 // fetch all orders
-export const fetchAllOrders = catchAsyncErrors(async (req, res, next) => {})
+export const fetchAllOrders = catchAsyncErrors(async (req, res, next) => {
+    const result = await pool.query(
+        `SELECT o.*,
+        COALESCE(
+            json_agg(
+                json_build_object(
+                    'order_item_id', oi.id,
+                    'order_id', oi.order_id,
+                    'product_id', oi.product_id,
+                    'quantity', oi.quantity,
+                    'price', oi.price,
+                    'image', oi.image,
+                    'title', oi.title
+                )
+            ) FILTER (WHERE oi.id IS NOT NULL),
+            '[]'
+        ) AS order_items,
+        json_build_object(
+            'full_name', s.full_name,
+            'state', s.state,
+            'city', s.city,
+            'country', s.country,
+            'address', s.address,
+            'pincode', s.pincode,
+            'phone', s.phone
+        ) AS shipping_info
+        FROM orders o
+        LEFT JOIN order_items oi ON o.id = oi.order_id
+        LEFT JOIN shipping_info s ON o.id = s.order_id
+        GROUP BY o.id, s.id`
+    );
+
+    res.status(200).json({
+        success: true,
+        message: "All orders fetched",
+        orders: result.rows,
+    })
+})
 
 // udpate order status
 export const updateOrderStatus = catchAsyncErrors(async (req, res, next) => {})
