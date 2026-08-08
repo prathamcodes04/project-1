@@ -1,10 +1,11 @@
 import ErrorHandler from "../middlewares/errorMiddlewares.js";
 import { catchAsyncErrors } from "../middlewares/catchAsyncError.js";
 import pool from "../database/db.js";
-import { generatePayementIntent } from "../utils/generatePayementIntent";
+import { generatePayementIntent } from "../utils/generatePayementIntent.js";
 
 // place new order
 export const placeNewOrder = catchAsyncErrors(async (req, res, next) => {
+    // extract shipping and cart details from request body
     const {
         full_name,
         state,
@@ -28,15 +29,20 @@ export const placeNewOrder = catchAsyncErrors(async (req, res, next) => {
         return next(new ErrorHandler("Please provide complete shipping details.", 400));
     }
 
+    // ensure orderedItems is an array
     const items = Array.isArray(orderedItems)
         ? orderedItems
         : JSON.stringify(orderedItems);
     
+    // check whether cart contains any items
     if(!items || items.length === 0){
         return next(new ErrorHandler("No items in cart", 400));
     }
 
+    // extract product ids from ordered items
     const productIds = items.map(item => item.product.id);
+
+    // fetch all products from db 
     const {rows: products} = await pool.query(
         `SELECT id, price, stock, name
         FROM products
@@ -45,25 +51,31 @@ export const placeNewOrder = catchAsyncErrors(async (req, res, next) => {
 
     
     let total_price = 0;
+    // array used to prepare bulk insertion of order items
     const values = [];
     const placeHolders = [];
 
+    //validate products, check stock and calculate order total
     items.forEach((item, index) => {
         const product = products.find(p => p.id === item.product.id);
 
+        // check whether product exists
         if(!product){
             return next(new ErrorHandler(`Product not found for id: ${item.product.id}`, 404));
         }
 
+        // check whether enough stock is available
         if(item.quantity > product.stock){
             return next(new ErrorHandler(`Only ${product.stock} units available for ${product.name}`, 400));
         }
 
+        // caculate total price using the current db price
         const itemTotal = product.price * item.quantity;
         total_price += itemTotal
 
+        // prepare values for order_items bulk insertion
         values.push(
-            null, 
+            null, // order id will be replaced later
             product.id, 
             item.quantity, 
             product.price, 
@@ -71,36 +83,55 @@ export const placeNewOrder = catchAsyncErrors(async (req, res, next) => {
             product.name
         );
 
+        // cgenerate $1, $2, $3... placeholders for the bulk insert query
         const offset = index * 6;
 
-        placeHolders.push(`($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6})`);
+        placeHolders.push(
+            `($${offset + 1}, $${offset + 2}, $${offset + 3}, 
+            $${offset + 4}, $${offset + 5}, $${offset + 6})`
+        );
     });
 
+    // calculate tax and shipping charges
     const tax_price = 0.008;
     const shipping_price = 2;
-    total_price = Math.round(total_price + total_price * tax_price + shipping_price);
 
-    // create order
+    total_price = Math.round(
+        total_price + 
+        total_price * tax_price 
+        + shipping_price
+    );
+
+    // create the main order record
     const orderResult = await pool.query(
-        `INSER INTO order
-        (buyer_id, total_price, text_price, shipping_price)
+        `INSERT INTO orders (buyer_id, total_price, tax_price, shipping_price)
         VALUES ($1, $2, $3, $4)
         RETURNING *`,
-    [req.user.id, total_price, tax_price, shipping_price]);
+        [
+            req.user.id, 
+            total_price, 
+            tax_price, 
+            shipping_price
+        ]
+    );
 
     const orderId = orderResult.rows[0].id;
 
+    // replace temporary order_id values with the actual order ID
     for(let i = 0; i < values.length; i += 6){
         values[i] = orderId;
     }
 
+    // insert all ordered products into order_items
     await pool.query(
-        `INSERT INTO order_items
+        `INSERT INTO order_items 
         (order_id, product_id, quantity, price, image, title)
-        VALUES ${placeHolders.join(", ")} RETURNING *`
-    , values);
+        VALUES ${placeHolders.join(", ")} 
+        RETURNING *`, 
+        values
+    );
 
-    // shipping info 
+    // save customers shipping information
     await pool.query(
         `INSERT INTO shipping_info
         (order_id, full_name, state, city, country, address, pincode, phone)
@@ -108,10 +139,11 @@ export const placeNewOrder = catchAsyncErrors(async (req, res, next) => {
         RETURNING *`
     , [orderId, full_name, state, city, country, address, pincode, phone]);
 
-    // generate payment intent
+    // generate stripe payment intent for the order
     // telling stripe that we want to pay
     const paymentResponse = await generatePayementIntent(orderId, total_price);
 
+    // handle payment intent creation failure
     if(!paymentResponse.success){
         return next(new ErrorHandler("Payment failed try again: ", 500));
     }

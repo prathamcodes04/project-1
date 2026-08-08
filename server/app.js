@@ -126,7 +126,7 @@ app.use(
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/product", productRouter);
 app.use("/api/v1/admin", adminRouter);
-app.use("/api/v1/admin", orderRouter);
+app.use("/api/v1/order", orderRouter);
 
 createTables();
 
