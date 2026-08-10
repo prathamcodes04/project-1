@@ -93,8 +93,8 @@ export const placeNewOrder = catchAsyncErrors(async (req, res, next) => {
     });
 
     // calculate tax and shipping charges
-    const tax_price = 0.008;
-    const shipping_price = 2;
+    const tax_price = 0.18;
+    const shipping_price = total_price >= 50 ? 0 : 2;
 
     total_price = Math.round(
         total_price + 
@@ -288,7 +288,55 @@ export const fetchAllOrders = catchAsyncErrors(async (req, res, next) => {
 })
 
 // udpate order status
-export const updateOrderStatus = catchAsyncErrors(async (req, res, next) => {})
+export const updateOrderStatus = catchAsyncErrors(async (req, res, next) => {
+    const {status} = req.body;
+
+    if(!status){
+        return next(new ErrorHandler("Provide a valid status for order", 400));
+    }
+
+    const {orderId} = req.params;
+    
+    const result = await pool.query(
+        `SELECT * FROM orders
+        WHERE id = $1`, [orderId]
+    );
+
+    if(result.rows.length === 0){
+        return next(new ErrorHandler("Invalid order ID.", 404));
+    }
+
+    const updatedOrder = await pool.query(
+        `UPDATE orders
+        SET order_status = $1
+        WHERE id = $2
+        RETURNING *`, [status, orderId]
+    );
+
+    res.status(200).json({
+        success: true,
+        message: "Order status updated",
+        updatedOrder: updatedOrder.rows[0]
+    });
+})
 
 // delete order
-export const deleteOrder = catchAsyncErrors(async (req, res, next) => {})
+export const deleteOrder = catchAsyncErrors(async (req, res, next) => {
+    const {orderId} = req.params;
+
+    const result = await pool.query(
+        `DELETE FROM orders
+        WHERE id = $1
+        RETURNING *`, [orderId]
+    );
+
+    if(result.rows.length === 0){
+        return next(new ErrorHandler("Invalid order id", 404));
+    }
+
+    res.status(200).json({
+        success: true,
+        message: "Order deleted",
+        order: result.rows[0],
+    })
+})
