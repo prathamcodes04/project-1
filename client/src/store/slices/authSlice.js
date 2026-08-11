@@ -190,11 +190,11 @@ const authSlice = createSlice({
             state.authUser = null;
          })
          // logout
-         .addCase(logout.fulfilled, (state, ) => {
+         .addCase(logout.fulfilled, (state) => {
             state.authUser = {};
          })
          .addCase(logout.rejected, (state) => {
-            state.authUser;
+            state.authUser = null;
          })
          // forgot password
          .addCase(forgotPassword.pending, (state) => {
