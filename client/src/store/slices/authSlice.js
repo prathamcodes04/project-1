@@ -140,7 +140,6 @@ export const updateProfile = createAsyncThunk(
    }
 );
 
-
 const authSlice = createSlice({
    name: "auth",
    initialState: {
