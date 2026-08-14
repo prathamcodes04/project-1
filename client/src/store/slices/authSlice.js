@@ -62,20 +62,20 @@ export const logout = createAsyncThunk(
 export const forgotPassword = createAsyncThunk(
    "auth-forgotPassword",
 
-   async (email, thunkAPI) => {
+   async ({email}, thunkAPI) => {
       try {
-      const res = await axiosInstance.post(
-         "/auth/password/forgot",
-         { email }
-      );
-      toast.success(res.data.message);
-      return null;
+         const res = await axiosInstance.post(
+            "/auth/password/forgot",
+            { email }
+         );
+         toast.success(res.data.message);
+         return null;
       } catch (error) {
-      const message =
-         error.response?.data?.message ||
-         "Something went wrong. Please try again.";
-      toast.error(message);
-      return thunkAPI.rejectWithValue(message);
+         const message =
+            error.response?.data?.message ||
+            "Something went wrong. Please try again.";
+         toast.error(message);
+         return thunkAPI.rejectWithValue(message);
       }
    }
 );

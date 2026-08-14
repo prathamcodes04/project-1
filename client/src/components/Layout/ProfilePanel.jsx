@@ -10,15 +10,18 @@ import { toggleAuthPopup, toggleSidebar } from "../../store/slices/popupSlice";
 
 const ProfilePanel = () => {
   const dispatch = useDispatch();
+  // check whether profile panel is open
   const { isAuthPopupOpen } = useSelector((state) => state.popup);
   const { authUser, isUpdatingProfile, isUpdatingPassword } = useSelector(
     (state) => state.auth,
   );
 
+  // store profile form data
   const [name, setName] = useState(authUser?.name || "");
   const [email, setEmail] = useState(authUser?.email || "");
   const [avatar, setAvatar] = useState(null);
 
+  // when authuser changes, form fields gets updated with latest user information.
   useEffect(() => {
     if (authUser) {
       setName(authUser?.name || "");
@@ -31,26 +34,30 @@ const ProfilePanel = () => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
 
+  // logout
   const handleLogout = () => {
     dispatch(logout());
   };
 
+  // update profile
   const handleUpdateProfile = () => {
     const formData = new FormData();
     formData.append("name", name);
     formData.append("email", email);
     if (avatar) formData.append("avatar", avatar);
-    dispatch(updateProfile());
+    dispatch(updateProfile(formData));
   };
 
+  // update password
   const handleUpdatePassword = () => {
     const formData = new FormData();
     formData.append("currentPassword", currentPassword);
     formData.append("newPassword", newPassword);
     formData.append("confirmNewPassword", confirmNewPassword);
-    dispatch(updatePassword());
+    dispatch(updatePassword(formData));
   };
 
+  // dont render panel if it isnt open or nobody loggen in
   if (!isAuthPopupOpen || !authUser) return null;
 
   return (
@@ -151,7 +158,7 @@ const ProfilePanel = () => {
             />
             <input
               type={showPassword ? "text" : "password"}
-              placeholder="Current Password"
+              placeholder="New Password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               className="w-full p-2 rounded border border-border bg-secondary text-foreground"
@@ -159,7 +166,7 @@ const ProfilePanel = () => {
             <input
               type={showPassword ? "text" : "password"}
               placeholder="Confirm Password"
-              value={newPassword}
+              value={confirmNewPassword}
               onChange={(e) => setConfirmNewPassword(e.target.value)}
               className="w-full p-2 rounded border border-border bg-secondary text-foreground"
             />
