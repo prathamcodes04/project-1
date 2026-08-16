@@ -5,7 +5,7 @@ import {
   removeFromCart,
   updateCartQuantity,
 } from "../../store/slices/cartSlice";
-import { toggleCart, toggleSidebar } from "../../store/slices/popupSlice";
+import { toggleCart } from "../../store/slices/popupSlice";
 
 const CartSidebar = () => {
   const dispatch = useDispatch();
@@ -34,9 +34,10 @@ const CartSidebar = () => {
   return (
     <>
       {/* OVERLAY */}
+
       <div
         className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
-        onClick={() => dispatch(toggleSidebar())}
+        onClick={() => dispatch(toggleCart())}
       />
 
       {/* CART SIDEBAR */}
@@ -57,11 +58,11 @@ const CartSidebar = () => {
             <div className="text-center p-12">
               <p className="text-muted-foreground">Your cart is empty.</p>
               <Link
-                to={"/product"}
+                to={"/products"}
                 onClick={() => dispatch(toggleCart())}
                 className="inline-block mt-4 px-6 py-2 text-primary-foreground gradient-primary rounded-lg hover:flow-on-hover animate-smooth"
               >
-                Browser Products
+                Browse Products
               </Link>
             </div>
           ) : (
@@ -75,7 +76,7 @@ const CartSidebar = () => {
                     cart.map((item) => {
                       return (
                         <div key={item.product.id} className="glass-card p-4">
-                          <div className="flex items-center space-x-4">
+                          <div className="flex items-start space-x-4">
                             <img
                               src={item.product.images[0].url}
                               alt={item.product.name}
@@ -88,10 +89,9 @@ const CartSidebar = () => {
                               <p className="text-primary font-semibold">
                                 ${item.product.price}
                               </p>
-                            </div>
 
-                            {/* QUANTITY CONTROL */}
-                            <div className="flex items-center space-x-3 mt-2">
+                              {/* QUANTITY CONTROL */}
+                              <div className="flex items-center space-x-2 mt-2">
                               {/* DECREASE QUANTITY */}
                               <button
                                 className="p-1 rounded glass-card hover:glow-on-hover animate-smooth"
@@ -102,7 +102,7 @@ const CartSidebar = () => {
                                   )
                                 }
                               >
-                                <Minus className="w-4 h-4 text-primary" />
+                                <Minus className="w-4 h-4" />
                               </button>
 
                               <span className="w-8 text-center font-semibold">
@@ -119,7 +119,7 @@ const CartSidebar = () => {
                                   )
                                 }
                               >
-                                <Plus className="w-4 h-4 text-primary" />
+                                <Plus className="w-4 h-4"/>
                               </button>
 
                               <button
@@ -128,9 +128,10 @@ const CartSidebar = () => {
                                   dispatch(removeFromCart(item.product.id))
                                 }
                               >
-                                <Trash2 className="w-4 h-4 text-destructive-foreground"/>
+                                <Trash2 className="w-4 h-4"/>
                               </button>
                             </div>
+                            </div>      
                           </div>
                         </div>
                       );
@@ -146,7 +147,7 @@ const CartSidebar = () => {
                 </div>
 
                 <link to = {"/cart"} onClick={() => dispatch(toggleCart())}
-                className="w-full block text-center gradient-primary text-primary-foreground rounded-lg hover:glow-on-hover animate-smooth font-semibold">
+                className="w-full py-3 block text-center gradient-primary text-primary-foreground rounded-lg hover:glow-on-hover animate-smooth font-semibold">
                   View Cart & Checkout
                 </link>
               </div>
