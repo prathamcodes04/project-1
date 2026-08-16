@@ -90,18 +90,55 @@ const ProductSlider = ({ title, products }) => {
                 {/* PRODUCT INFO */}
                 <div>
                   {/* PRODUCT TITLE */}
-                  <h3 className="text-lg font-semibold text-foreground mb-2 group-hover:text-primary transition-colors">{product.name}</h3>
+                  <h3 className="text-lg font-semibold text-foreground mb-2 group-hover:text-primary transition-colors">
+                    {product.name}
+                  </h3>
 
                   {/* PRODUCT RATINGS */}
-                    <div className="flex items-center space-x-2 mb-2">
-                      <div className="flex items-center">
-                        {
-                          [...Array(5)].map((_, i) => {
-                            
-                          })
-                        }
-                      </div>
+                  <div className="flex items-center space-x-2 mb-2">
+                    <div className="flex items-center">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`w-4 h-4 ${
+                            i < Math.floor(product.ratings || 0)
+                              ? "text-yellow-400"
+                              : "text-gray-300"
+                          }`}
+                        />
+                      ))}
                     </div>
+
+                    <span className="text-sm text-muted-foreground">
+                      ({product.review_count})
+                    </span>
+                  </div>
+
+                  {/* PRODUCT PRICE */}
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xl font-bold text-primary">
+                      ${product.price}
+                    </span>
+                  </div>
+
+                  {/* PRODUCT AVAILABILITY */}
+                  <div>
+                    <span
+                      className={`text-xs px-2 py-1 rounded ${
+                        product.stock > 5
+                          ? "bg-green-500/20 text-gray-400"
+                          : product.stock > 0
+                            ? "bg-yellow-500/20 text-yellow-400"
+                            : "bg-red-500/2 text-red-400"
+                      }`}
+                    >
+                      {product.stock > 5
+                        ? "In Stock"
+                        : product.stock > 0
+                          ? "Limited Stock"
+                          : "Out of Stock"}
+                    </span>
+                  </div>
                 </div>
               </Link>
             );
